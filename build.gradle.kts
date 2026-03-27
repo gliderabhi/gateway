@@ -1,0 +1,44 @@
+plugins {
+    java
+    id("org.springframework.boot") version "3.2.3"
+    id("io.spring.dependency-management") version "1.1.4"
+}
+
+group = "com.sevis"
+version = "0.0.1-SNAPSHOT"
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+}
+
+extra["springCloudVersion"] = "2023.0.1"
+
+dependencies {
+    // Spring Cloud Gateway (reactive — uses WebFlux, not spring-boot-starter-web)
+    implementation("org.springframework.cloud:spring-cloud-starter-gateway")
+
+    // Eureka Client
+    implementation("org.springframework.cloud:spring-cloud-starter-netflix-eureka-client")
+
+    // Load Balancer (required for lb:// routing to discovered services)
+    implementation("org.springframework.cloud:spring-cloud-starter-loadbalancer")
+
+    // Actuator
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
+
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+}
+
+dependencyManagement {
+    imports {
+        mavenBom("org.springframework.cloud:spring-cloud-dependencies:${property("springCloudVersion")}")
+    }
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
+}
