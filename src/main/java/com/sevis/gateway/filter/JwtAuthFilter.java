@@ -1,5 +1,6 @@
 package com.sevis.gateway.filter;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -42,11 +43,23 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
         String token = authHeader.substring(7);
         try {
-            Jwts.parserBuilder()
+            Claims claims = Jwts.parserBuilder()
                     .setSigningKey(Keys.hmacShaKeyFor(secret.getBytes()))
                     .build()
-                    .parseClaimsJws(token);
-            return chain.filter(exchange);
+                    .parseClaimsJws(token)
+                    .getBody();
+
+            // Forward identity claims as headers so downstream services can use them
+            // without parsing the JWT themselves
+            ServerWebExchange mutated = exchange.mutate()
+                    .request(r -> r.headers(headers -> {
+                        headers.set("X-User-Id",      String.valueOf(claims.get("userId")));
+                        headers.set("X-User-Role",    String.valueOf(claims.get("role")));
+                        headers.set("X-Account-Type", String.valueOf(claims.get("accountType")));
+                    }))
+                    .build();
+
+            return chain.filter(mutated);
         } catch (JwtException | IllegalArgumentException e) {
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
