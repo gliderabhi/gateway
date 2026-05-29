@@ -29,6 +29,11 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        // Let CORS preflight pass through before JWT validation
+        if (exchange.getRequest().getMethod() == org.springframework.http.HttpMethod.OPTIONS) {
+            return chain.filter(exchange);
+        }
+
         String path = exchange.getRequest().getURI().getPath();
 
         if (PUBLIC_PATHS.stream().anyMatch(path::startsWith)) {
@@ -56,6 +61,8 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
                         headers.set("X-User-Id",      String.valueOf(claims.get("userId")));
                         headers.set("X-User-Role",    String.valueOf(claims.get("role")));
                         headers.set("X-Account-Type", String.valueOf(claims.get("accountType")));
+                        Object dealerId = claims.get("dealerId");
+                        if (dealerId != null) headers.set("X-Dealer-Id", String.valueOf(dealerId));
                     }))
                     .build();
 
