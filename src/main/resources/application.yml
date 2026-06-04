@@ -15,10 +15,13 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOrigins:
+            allowedOriginPatterns:
               - "http://localhost:4200"
               - "http://localhost:4201"
               - "http://32.194.147.195"
+              - "https://*.trycloudflare.com"
+              - "https://sevis.store"
+              - "https://*.sevis.store"
             allowedMethods:
               - GET
               - POST
