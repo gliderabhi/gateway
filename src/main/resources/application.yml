@@ -22,6 +22,7 @@ spring:
               - "https://*.trycloudflare.com"
               - "https://sevis.store"
               - "https://*.sevis.store"
+              - "https://api.sevis.store"
             allowedMethods:
               - GET
               - POST
