@@ -5,7 +5,7 @@ spring:
   application:
     name: gateway
   codec:
-    max-in-memory-size: 100MB
+    max-in-memory-size: 25MB
   cloud:
     gateway:
       discovery:
@@ -23,6 +23,7 @@ spring:
               - "https://sevis.store"
               - "https://*.sevis.store"
               - "https://api.sevis.store"
+              - "https://photos.sevis.store"
             allowedMethods:
               - GET
               - POST
