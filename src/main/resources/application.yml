@@ -31,7 +31,14 @@ spring:
               - PATCH
               - DELETE
               - OPTIONS
-            allowedHeaders: "*"
+            allowedHeaders:
+              - Authorization
+              - Content-Type
+              - X-Folder-Password
+              - X-Requested-With
+              - Accept
+            exposedHeaders:
+              - Authorization
             allowCredentials: true
             maxAge: 3600
       routes: []
