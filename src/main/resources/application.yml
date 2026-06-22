@@ -16,8 +16,10 @@ spring:
         cors-configurations:
           '[/**]':
             allowedOriginPatterns:
+              - "http://localhost:3010"
               - "http://localhost:4200"
               - "http://localhost:4201"
+              - "http://localhost:4202"
               - "http://32.194.147.195"
               - "https://*.trycloudflare.com"
               - "https://sevis.store"
