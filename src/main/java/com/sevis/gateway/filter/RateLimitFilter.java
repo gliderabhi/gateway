@@ -36,6 +36,11 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        String path = exchange.getRequest().getURI().getPath();
+        if (path.contains("/api/auth/")) {
+            return chain.filter(exchange);
+        }
+
         String key;
         int limit;
 
