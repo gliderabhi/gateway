@@ -25,7 +25,8 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     private static final List<String> PUBLIC_PATHS = List.of(
             "/user-service/api/auth/",
             "/kids-study-service/",
-            "/songs-service/"
+            "/songs-service/",
+            "/photo-service/downloads/"
     );
 
     @Override
@@ -42,12 +43,20 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         }
 
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        String token;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+        } else {
+            // Native <video>/<img> element loads and hls.js's manifest fetch don't go
+            // through the app's HttpClient/interceptor, so they can't carry a custom
+            // Authorization header — accept the same JWT via query param as a fallback
+            // so authenticated media (thumbnails, HLS playlists, raw stream) can load.
+            token = exchange.getRequest().getQueryParams().getFirst("access_token");
+        }
+        if (token == null) {
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
-
-        String token = authHeader.substring(7);
         try {
             Claims claims = Jwts.parserBuilder()
                     .setSigningKey(Keys.hmacShaKeyFor(secret.getBytes()))

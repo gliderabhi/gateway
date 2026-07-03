@@ -5,7 +5,9 @@ spring:
   application:
     name: gateway
   codec:
-    max-in-memory-size: 25MB
+    # Raised from 25MB so video uploads (routed through here to photo-service ->
+    # stream-service) aren't truncated; photo uploads are unaffected by a higher ceiling.
+    max-in-memory-size: 2GB
   cloud:
     gateway:
       discovery:
