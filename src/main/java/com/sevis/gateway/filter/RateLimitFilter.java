@@ -21,12 +21,12 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 /**
  * Sliding-window rate limiter.
  * - Authenticated requests: keyed by userId, limit from JWT rateLimit claim.
- * - Unauthenticated requests: keyed by IP, default 20 req/min.
+ * - Unauthenticated requests: keyed by IP, default 300 req/min.
  */
 @Component
 public class RateLimitFilter implements GlobalFilter, Ordered {
 
-    private static final int  DEFAULT_UNAUTHENTICATED_LIMIT = 20;
+    private static final int  DEFAULT_UNAUTHENTICATED_LIMIT = 300;
     private static final long WINDOW_MS = 60_000L;
 
     @Value("${jwt.secret}")
