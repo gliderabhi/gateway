@@ -9,6 +9,7 @@ import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
@@ -26,7 +27,8 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             "/user-service/api/auth/",
             "/kids-study-service/",
             "/songs-service/",
-            "/photo-service/downloads/"
+            "/photo-service/downloads/",
+            "/listing-service/api/listings/photos/"
     );
 
     @Override
@@ -39,6 +41,9 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         String path = exchange.getRequest().getURI().getPath();
 
         if (PUBLIC_PATHS.stream().anyMatch(path::startsWith)) {
+            return chain.filter(exchange);
+        }
+        if (isPublicListingRead(path, exchange.getRequest().getMethod())) {
             return chain.filter(exchange);
         }
 
@@ -81,6 +86,21 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
+    }
+
+    // Browsing listings (search + viewing a single listing) is public — room
+    // seekers shouldn't need an account just to look. "/mine" is deliberately
+    // excluded since it requires the caller's own X-User-Id to scope results,
+    // and every mutating endpoint (create/update/status/delete/media upload)
+    // shares the same "/api/listings" path prefix, so this must also check
+    // the HTTP method — a path-only bypass would make POST/PUT/DELETE public too.
+    private static final String LISTINGS_PREFIX = "/listing-service/api/listings";
+
+    private boolean isPublicListingRead(String path, HttpMethod method) {
+        if (method != HttpMethod.GET) return false;
+        if (!path.startsWith(LISTINGS_PREFIX)) return false;
+        if (path.startsWith(LISTINGS_PREFIX + "/mine")) return false;
+        return true;
     }
 
     @Override
