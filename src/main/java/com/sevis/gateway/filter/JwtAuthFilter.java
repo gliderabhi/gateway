@@ -43,9 +43,11 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         if (PUBLIC_PATHS.stream().anyMatch(path::startsWith)) {
             return chain.filter(exchange);
         }
-        if (isPublicListingRead(path, exchange.getRequest().getMethod())) {
-            return chain.filter(exchange);
-        }
+        // Public listing reads are optionally authenticated: a logged-in broker's
+        // token is still parsed and forwarded (so e.g. listing-service can decide
+        // whether to include group-only fields like ownerPhone), but a missing or
+        // invalid token doesn't block the request — seekers browse with no account.
+        boolean optionalAuth = isPublicListingRead(path, exchange.getRequest().getMethod());
 
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         String token;
@@ -59,6 +61,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             token = exchange.getRequest().getQueryParams().getFirst("access_token");
         }
         if (token == null) {
+            if (optionalAuth) return chain.filter(exchange);
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
@@ -83,6 +86,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
             return chain.filter(mutated);
         } catch (JwtException | IllegalArgumentException e) {
+            if (optionalAuth) return chain.filter(exchange);
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
