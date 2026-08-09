@@ -24,10 +24,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
     private static final List<String> PUBLIC_PATHS = List.of(
             "/user-service/api/auth/login",
-            "/user-service/api/auth/signup",
-            // Google sign-in (see user-service's AuthController#google) — like login/signup,
-            // this issues the session token itself, so it can't require one to reach it.
-            "/user-service/api/auth/google"
+            "/user-service/api/auth/signup"
     );
 
     @Override
@@ -45,7 +42,8 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return unauthorized(exchange);
+            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+            return exchange.getResponse().setComplete();
         }
 
         String token = authHeader.substring(7);
@@ -70,18 +68,9 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
             return chain.filter(mutated);
         } catch (JwtException | IllegalArgumentException e) {
-            return unauthorized(exchange);
+            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+            return exchange.getResponse().setComplete();
         }
-    }
-
-    private Mono<Void> unauthorized(ServerWebExchange exchange) {
-        String origin = exchange.getRequest().getHeaders().getFirst(HttpHeaders.ORIGIN);
-        if (origin != null) {
-            exchange.getResponse().getHeaders().set("Access-Control-Allow-Origin", origin);
-            exchange.getResponse().getHeaders().set("Access-Control-Allow-Credentials", "true");
-        }
-        exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-        return exchange.getResponse().setComplete();
     }
 
     @Override
