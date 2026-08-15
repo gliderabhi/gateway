@@ -9,6 +9,7 @@ import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
@@ -23,8 +24,14 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     private String secret;
 
     private static final List<String> PUBLIC_PATHS = List.of(
-            "/user-service/api/auth/login",
-            "/user-service/api/auth/signup"
+            "/user-service/api/auth/",
+            "/kids-study-service/",
+            "/songs-service/",
+            "/photo-service/downloads/",
+            "/listing-service/api/listings/photos/",
+            // Public "Post Your Story" submission — anyone can submit without
+            // an account; StoryController still forces PENDING_REVIEW on it.
+            "/stories-service/api/stories/submit"
     );
 
     @Override
@@ -39,14 +46,29 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         if (PUBLIC_PATHS.stream().anyMatch(path::startsWith)) {
             return chain.filter(exchange);
         }
+        // Public listing reads are optionally authenticated: a logged-in broker's
+        // token is still parsed and forwarded (so e.g. listing-service can decide
+        // whether to include group-only fields like ownerPhone), but a missing or
+        // invalid token doesn't block the request — seekers browse with no account.
+        boolean optionalAuth = isPublicListingRead(path, exchange.getRequest().getMethod())
+                || isPublicStoryRead(path, exchange.getRequest().getMethod());
 
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        String token;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+        } else {
+            // Native <video>/<img> element loads and hls.js's manifest fetch don't go
+            // through the app's HttpClient/interceptor, so they can't carry a custom
+            // Authorization header — accept the same JWT via query param as a fallback
+            // so authenticated media (thumbnails, HLS playlists, raw stream) can load.
+            token = exchange.getRequest().getQueryParams().getFirst("access_token");
+        }
+        if (token == null) {
+            if (optionalAuth) return chain.filter(exchange);
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
-
-        String token = authHeader.substring(7);
         try {
             Claims claims = Jwts.parserBuilder()
                     .setSigningKey(Keys.hmacShaKeyFor(secret.getBytes()))
@@ -68,9 +90,47 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
             return chain.filter(mutated);
         } catch (JwtException | IllegalArgumentException e) {
+            if (optionalAuth) return chain.filter(exchange);
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
+    }
+
+    // Browsing listings (search + viewing a single listing) is public — room
+    // seekers shouldn't need an account just to look. "/mine" is deliberately
+    // excluded since it requires the caller's own X-User-Id to scope results,
+    // and every mutating endpoint (create/update/status/delete/media upload)
+    // shares the same "/api/listings" path prefix, so this must also check
+    // the HTTP method — a path-only bypass would make POST/PUT/DELETE public too.
+    private static final String LISTINGS_PREFIX = "/listing-service/api/listings";
+
+    private boolean isPublicListingRead(String path, HttpMethod method) {
+        if (method != HttpMethod.GET) return false;
+        if (!path.startsWith(LISTINGS_PREFIX)) return false;
+        if (path.startsWith(LISTINGS_PREFIX + "/mine")) return false;
+        return true;
+    }
+
+    // Browsing the stories site (feed, category counts, reading a single
+    // published story) is public — visitors shouldn't need an account to
+    // read. The review queue, single-story review lookup, and the
+    // publish-handoff endpoint stay behind full auth (StoryController's own
+    // STAFF_ROLES check still applies once authenticated) since they expose
+    // unpublished content and moderator actions.
+    private static final String STORIES_PREFIX = "/stories-service/api/stories";
+
+    private boolean isPublicStoryRead(String path, HttpMethod method) {
+        // Like/dislike are simple public click counters (no auth by design —
+        // see StoryController) reached via POST, so they need their own
+        // check rather than the GET-only rule below.
+        if (method == HttpMethod.POST && path.startsWith(STORIES_PREFIX) && (path.endsWith("/like") || path.endsWith("/dislike"))) {
+            return true;
+        }
+        if (method != HttpMethod.GET) return false;
+        if (!path.startsWith(STORIES_PREFIX)) return false;
+        if (path.startsWith(STORIES_PREFIX + "/review-queue")) return false;
+        if (path.startsWith(STORIES_PREFIX + "/next-approved")) return false;
+        return true;
     }
 
     @Override

@@ -21,12 +21,12 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 /**
  * Sliding-window rate limiter.
  * - Authenticated requests: keyed by userId, limit from JWT rateLimit claim.
- * - Unauthenticated requests: keyed by IP, default 20 req/min.
+ * - Unauthenticated requests: keyed by IP, default 300 req/min.
  */
 @Component
 public class RateLimitFilter implements GlobalFilter, Ordered {
 
-    private static final int  DEFAULT_UNAUTHENTICATED_LIMIT = 20;
+    private static final int  DEFAULT_UNAUTHENTICATED_LIMIT = 300;
     private static final long WINDOW_MS = 60_000L;
 
     @Value("${jwt.secret}")
@@ -36,6 +36,18 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        String path = exchange.getRequest().getURI().getPath();
+        // photo-service is exclusive to the Photos app, so it's safe to exempt
+        // outright. stream-service is shared with the separate movies app, so
+        // only its PHOTOS-tagged calls (listVideos()) are exempted here —
+        // leaving the movies app's own traffic subject to the normal limit.
+        String sourceApp = exchange.getRequest().getQueryParams().getFirst("sourceApp");
+        if (path.contains("/api/auth/")
+                || path.contains("/photo-service/")
+                || (path.contains("/stream-service/") && "PHOTOS".equals(sourceApp))) {
+            return chain.filter(exchange);
+        }
+
         String key;
         int limit;
 

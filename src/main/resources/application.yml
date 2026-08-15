@@ -5,7 +5,9 @@ spring:
   application:
     name: gateway
   codec:
-    max-in-memory-size: 25MB
+    # Raised from 25MB so video uploads (routed through here to photo-service ->
+    # stream-service) aren't truncated; photo uploads are unaffected by a higher ceiling.
+    max-in-memory-size: 2GB
   cloud:
     gateway:
       discovery:
@@ -16,8 +18,11 @@ spring:
         cors-configurations:
           '[/**]':
             allowedOriginPatterns:
+              - "http://localhost:3010"
               - "http://localhost:4200"
               - "http://localhost:4201"
+              - "http://localhost:4202"
+              - "http://localhost:4203"
               - "http://32.194.147.195"
               - "https://*.trycloudflare.com"
               - "https://sevis.store"
@@ -31,7 +36,14 @@ spring:
               - PATCH
               - DELETE
               - OPTIONS
-            allowedHeaders: "*"
+            allowedHeaders:
+              - Authorization
+              - Content-Type
+              - X-Folder-Password
+              - X-Requested-With
+              - Accept
+            exposedHeaders:
+              - Authorization
             allowCredentials: true
             maxAge: 3600
       routes: []
