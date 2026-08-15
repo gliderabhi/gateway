@@ -120,6 +120,12 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     private static final String STORIES_PREFIX = "/stories-service/api/stories";
 
     private boolean isPublicStoryRead(String path, HttpMethod method) {
+        // Like/dislike are simple public click counters (no auth by design —
+        // see StoryController) reached via POST, so they need their own
+        // check rather than the GET-only rule below.
+        if (method == HttpMethod.POST && path.startsWith(STORIES_PREFIX) && (path.endsWith("/like") || path.endsWith("/dislike"))) {
+            return true;
+        }
         if (method != HttpMethod.GET) return false;
         if (!path.startsWith(STORIES_PREFIX)) return false;
         if (path.startsWith(STORIES_PREFIX + "/review-queue")) return false;
