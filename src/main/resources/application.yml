@@ -22,6 +22,7 @@ spring:
               - "http://localhost:4200"
               - "http://localhost:4201"
               - "http://localhost:4202"
+              - "http://localhost:4203"
               - "http://32.194.147.195"
               - "https://*.trycloudflare.com"
               - "https://sevis.store"

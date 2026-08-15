@@ -47,7 +47,8 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         // token is still parsed and forwarded (so e.g. listing-service can decide
         // whether to include group-only fields like ownerPhone), but a missing or
         // invalid token doesn't block the request — seekers browse with no account.
-        boolean optionalAuth = isPublicListingRead(path, exchange.getRequest().getMethod());
+        boolean optionalAuth = isPublicListingRead(path, exchange.getRequest().getMethod())
+                || isPublicStoryRead(path, exchange.getRequest().getMethod());
 
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         String token;
@@ -104,6 +105,22 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         if (method != HttpMethod.GET) return false;
         if (!path.startsWith(LISTINGS_PREFIX)) return false;
         if (path.startsWith(LISTINGS_PREFIX + "/mine")) return false;
+        return true;
+    }
+
+    // Browsing the stories site (feed, category counts, reading a single
+    // published story) is public — visitors shouldn't need an account to
+    // read. The review queue, single-story review lookup, and the
+    // publish-handoff endpoint stay behind full auth (StoryController's own
+    // STAFF_ROLES check still applies once authenticated) since they expose
+    // unpublished content and moderator actions.
+    private static final String STORIES_PREFIX = "/stories-service/api/stories";
+
+    private boolean isPublicStoryRead(String path, HttpMethod method) {
+        if (method != HttpMethod.GET) return false;
+        if (!path.startsWith(STORIES_PREFIX)) return false;
+        if (path.startsWith(STORIES_PREFIX + "/review-queue")) return false;
+        if (path.startsWith(STORIES_PREFIX + "/next-approved")) return false;
         return true;
     }
 
