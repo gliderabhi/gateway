@@ -23,12 +23,14 @@ spring:
               - "http://localhost:4201"
               - "http://localhost:4202"
               - "http://localhost:4203"
+              - "http://localhost:4204"
               - "http://32.194.147.195"
               - "https://*.trycloudflare.com"
               - "https://sevis.store"
               - "https://*.sevis.store"
               - "https://api.sevis.store"
               - "https://photos.sevis.store"
+              - "https://drive.sevis.store"
             allowedMethods:
               - GET
               - POST
