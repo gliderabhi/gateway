@@ -31,7 +31,11 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             "/listing-service/api/listings/photos/",
             // Public "Post Your Story" submission — anyone can submit without
             // an account; StoryController still forces PENDING_REVIEW on it.
-            "/stories-service/api/stories/submit"
+            "/stories-service/api/stories/submit",
+            "/apparel-service/",
+            "/catalog-service/",
+            "/ebooks-service/",
+            "/api/v1/"
     );
 
     @Override
