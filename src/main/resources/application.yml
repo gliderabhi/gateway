@@ -81,7 +81,7 @@ eureka:
     instance-id: ${spring.application.name}:${server.port}
 
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:sevis-automobile-transport-secret-key-2024-must-be-at-least-256-bits}
 
 management:
   endpoints:
